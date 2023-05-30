@@ -1,7 +1,7 @@
 use crate::ast::{parse, Expression, LispError};
 use std::collections::HashMap;
 
-type Implementation = fn(&Vec<Expression>, &mut Environment) -> Result<Expression, LispError>;
+type Implementation = fn(Vec<Expression>, &mut Environment) -> Result<Expression, LispError>;
 
 pub struct Environment {
     env: HashMap<String, Implementation>,
@@ -14,15 +14,15 @@ impl Default for Environment {
 
         s.env.insert(
             "+".to_string(),
-            |args: &Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
+            |args: Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
                 let mut ret = 0.0;
-                for v in args.iter() {
+                for v in args.into_iter() {
                     match run_exp(v, env) {
                         Ok(v) => match v {
                             Expression::Num(n) => {
                                 ret += n;
                             }
-                            Expression::Func(_) => {}
+                            _ => {}
                         },
                         Err(e) => return Err(e),
                     }
@@ -33,15 +33,15 @@ impl Default for Environment {
 
         s.env.insert(
             "*".to_string(),
-            |args: &Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
+            |args: Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
                 let mut ret = 1.0;
-                for v in args.iter() {
+                for v in args.into_iter() {
                     match run_exp(v, env) {
                         Ok(v) => match v {
                             Expression::Num(n) => {
                                 ret *= n;
                             }
-                            Expression::Func(_) => {}
+                            _ => {}
                         },
                         Err(e) => return Err(e),
                     }
@@ -52,14 +52,14 @@ impl Default for Environment {
 
         s.env.insert(
             "-".to_string(),
-            |args: &Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
-                let mut iter = args.iter();
+            |args: Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
+                let mut iter = args.into_iter();
                 let mut ret = match iter.next() {
                     None => return Err(LispError::IllegalArguements),
                     Some(ret) => match run_exp(ret, env) {
                         Ok(v) => match v {
                             Expression::Num(n) => n,
-                            Expression::Func(_) => {
+                            _ => {
                                 return Err(LispError::IllegalArguements);
                             }
                         },
@@ -72,7 +72,7 @@ impl Default for Environment {
                             Expression::Num(n) => {
                                 ret -= n;
                             }
-                            Expression::Func(_) => {}
+                            _ => {}
                         },
                         Err(e) => return Err(e),
                     }
@@ -83,14 +83,14 @@ impl Default for Environment {
 
         s.env.insert(
             "/".to_string(),
-            |args: &Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
-                let mut iter = args.iter();
+            |args: Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
+                let mut iter = args.into_iter();
                 let mut ret = match iter.next() {
                     None => return Err(LispError::IllegalArguements),
                     Some(ret) => match run_exp(ret, env) {
                         Ok(v) => match v {
                             Expression::Num(n) => n,
-                            Expression::Func(_) => {
+                            _ => {
                                 return Err(LispError::IllegalArguements);
                             }
                         },
@@ -103,38 +103,7 @@ impl Default for Environment {
                             Expression::Num(n) => {
                                 ret /= n;
                             }
-                            Expression::Func(_) => {}
-                        },
-                        Err(e) => return Err(e),
-                    }
-                }
-                Ok(Expression::Num(ret))
-            },
-        );
-
-        s.env.insert(
-            "define".to_string(),
-            |args: &Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
-                let mut iter = args.iter();
-                let mut ret = match iter.next() {
-                    None => return Err(LispError::IllegalArguements),
-                    Some(ret) => match run_exp(ret, env) {
-                        Ok(v) => match v {
-                            Expression::Num(n) => n,
-                            Expression::Func(_) => {
-                                return Err(LispError::IllegalArguements);
-                            }
-                        },
-                        Err(e) => return Err(e),
-                    },
-                };
-                for v in iter {
-                    match run_exp(v, env) {
-                        Ok(v) => match v {
-                            Expression::Num(n) => {
-                                ret /= n;
-                            }
-                            Expression::Func(_) => {}
+                            _ => {}
                         },
                         Err(e) => return Err(e),
                     }
@@ -147,27 +116,37 @@ impl Default for Environment {
     }
 }
 
-pub fn run(code: String) {
+pub fn run(code: String) -> Vec<Result<Expression, LispError>> {
     let mut env = Environment::default();
     let expressions = parse(code).unwrap();
 
-    for exp in expressions.iter() {
-        println!("{}", run_exp(exp, &mut env).unwrap());
+    let mut out = Vec::new();
+
+    for exp in expressions.into_iter() {
+        let ret = run_exp(exp, &mut env);
+        out.push(ret);
+        match out.last().unwrap() {
+            Ok(r) => println!("{}", r),
+            Err(e) => println!("Error: {:?}", e),
+        };
     }
+
+    out
 }
 
-fn run_exp(exp: &Expression, env: &mut Environment) -> Result<Expression, LispError> {
+fn run_exp(exp: Expression, env: &mut Environment) -> Result<Expression, LispError> {
     match exp {
-        Expression::Num(n) => {
-            return Ok(Expression::Num(*n));
-        }
         Expression::Func((name, params)) => {
-            match (*env).env.get(name) {
+            match (*env).env.get(&name) {
                 None => {
                     Err(LispError::IllegalArguements) // TODO: get right error here
                 }
-                Some(f) => f(&params, env),
+                Some(f) => match f(params, env) {
+                    Err(e) => Err(e),
+                    Ok(e) => Ok(e),
+                },
             }
         }
+        _ => Ok(exp),
     }
 }
