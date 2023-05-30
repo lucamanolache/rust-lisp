@@ -53,6 +53,7 @@ impl Default for Environment {
         s.env.insert(
             "-".to_string(),
             |args: Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
+                let len = args.len();
                 let mut iter = args.into_iter();
                 let mut ret = match iter.next() {
                     None => return Err(LispError::IllegalArguements),
@@ -66,6 +67,9 @@ impl Default for Environment {
                         Err(e) => return Err(e),
                     },
                 };
+                if len == 1 {
+                    return Ok(Expression::Num(-ret));
+                }
                 for v in iter {
                     match run_exp(v, env) {
                         Ok(v) => match v {
@@ -109,6 +113,46 @@ impl Default for Environment {
                     }
                 }
                 Ok(Expression::Num(ret))
+            },
+        );
+
+        s.env.insert(
+            "<".to_string(),
+            |args: Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
+                if args.len() != 2 {
+                    return Err(LispError::IllegalArguements);
+                }
+                let mut args = args.into_iter();
+                let p1 = match run_exp(args.next().unwrap(), env)? {
+                    Expression::Num(n) => n,
+                    _ => return Err(LispError::IllegalArguements),
+                };
+                let p2 = match run_exp(args.next().unwrap(), env)? {
+                    Expression::Num(n) => n,
+                    _ => return Err(LispError::IllegalArguements),
+                };
+
+                Ok(Expression::Bool(p1 < p2))
+            },
+        );
+
+        s.env.insert(
+            ">".to_string(),
+            |args: Vec<Expression>, env: &mut Environment| -> Result<Expression, LispError> {
+                if args.len() != 2 {
+                    return Err(LispError::IllegalArguements);
+                }
+                let mut args = args.into_iter();
+                let p1 = match run_exp(args.next().unwrap(), env)? {
+                    Expression::Num(n) => n,
+                    _ => return Err(LispError::IllegalArguements),
+                };
+                let p2 = match run_exp(args.next().unwrap(), env)? {
+                    Expression::Num(n) => n,
+                    _ => return Err(LispError::IllegalArguements),
+                };
+
+                Ok(Expression::Bool(p1 > p2))
             },
         );
 

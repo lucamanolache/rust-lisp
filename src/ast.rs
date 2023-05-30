@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::slice::Iter;
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub enum Expression {
     Num(f64),
@@ -20,18 +21,18 @@ impl Display for Expression {
                 write!(f, "()")
             }
             Expression::List(l) => {
-                write!(f, "(");
+                write!(f, "(").unwrap();
                 let mut iter = l.iter();
                 match iter.next() {
                     None => {
                         return write!(f, ")");
                     }
                     Some(e) => {
-                        write!(f, " {}", e);
+                        write!(f, " {}", e).unwrap();
                     }
                 }
                 for i in iter {
-                    write!(f, ", {}", i);
+                    write!(f, ", {}", i).unwrap()
                 }
                 write!(f, " )")
             }
