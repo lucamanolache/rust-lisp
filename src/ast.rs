@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::slice::Iter;
 
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     Num(f64),
     Bool(bool),
